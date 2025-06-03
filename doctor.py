@@ -12,6 +12,14 @@ class DriveDoctor:
         self.dev = usb.core.find(idVendor=0x05fd, idProduct=0x1290)
         self.dev.set_configuration()
 
+    def unlock(self):
+        # The range [0x1_0000, 0x20_0000) is read protected.
+        # The range [0x8576/0x8580, 0xF000) is write protected.
+        # TODO: identify firmware and only write one byte
+        if next(self.read(0x80000, 1)) == b'\xff':
+            self.write_byte(0x82B6, 0x41) # GC2R-D2A, GC2-DMS
+            self.write_byte(0x82BE, 0x41) # GC2-D2B
+
     def write_byte(self, addr, byte):
         req = pack('<6I', 0x87654321, 0x3E8, addr, byte, 1, 0)
         self.dev.write(endpoint=0x0E, data=req)
@@ -39,6 +47,7 @@ class DriveDoctor:
 
     def dump_rom(self, path):
         # This takes about a minute.
+        self.unlock()
         self.dump(path, addr=0x80000, size=0x20000)
 
 if __name__ == '__main__':
